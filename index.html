@@ -1,0 +1,1535 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f6fa">
+  <title>PTH Control Tower — Production Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --navy: #142a47;
+      --blue: #2473d4;
+      --ink: #1c2b3f;
+      --muted: #748196;
+      --line: #e7ecf2;
+      --paper: #fff;
+      --canvas: #f3f6fa;
+      --green: #179a78;
+      --amber: #e5a23f;
+      --red: #e05c63;
+      --shadow: 0 3px 12px rgb(30 52 79 / 5%);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font: 13px/1.45 Inter, "Segoe UI", Arial, sans-serif;
+    }
+    button, select, input { font: inherit; }
+    button { cursor: pointer; }
+    .layout { min-height: 100vh; }
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 2;
+      display: flex;
+      width: 190px;
+      flex-direction: column;
+      padding: 19px 11px 14px;
+      color: #e2ebf6;
+      background: var(--navy);
+    }
+    .brand { display: flex; align-items: center; gap: 9px; padding: 3px 7px 28px; }
+    .brand-mark {
+      display: block;
+      width: 48px;
+      height: 39px;
+      border: 1px solid rgb(19 201 240 / 38%);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 0 15px rgb(0 197 239 / 24%), 0 3px 10px rgb(0 0 0 / 28%);
+      object-fit: contain;
+      transition: box-shadow .2s ease, transform .2s ease;
+    }
+    .brand-text { color: #fff; font-size: 12px; font-weight: 760; line-height: 1.12; letter-spacing: .07em; }
+    .brand-text span { display: block; margin-top: 4px; color: #96abc5; font-size: 8px; font-weight: 650; }
+    .nav-label { padding: 0 9px 9px; color: #93a6bf; font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .nav { display: grid; gap: 3px; }
+    .nav button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #c2d0e0;
+      text-align: left;
+      font-size: 11px;
+    }
+    .nav button:hover, .nav button.active { background: #2473d4; color: #fff; }
+    .nav-icon { width: 17px; text-align: center; font-size: 14px; }
+    .sidebar-note { margin-top: auto; padding: 13px 9px 5px; color: #8fa2ba; font-size: 9px; line-height: 1.7; }
+    main { margin-left: 190px; padding: 0 24px 30px; }
+    .topbar {
+      display: flex;
+      min-height: 62px;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      background: var(--paper);
+      padding: 0 18px;
+    }
+    .topbar-wrap { margin: 0 -24px; }
+    .top-title { color: #65748a; font-size: 11px; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .sync-label { display: flex; align-items: center; gap: 6px; color: var(--green); font-size: 10px; }
+    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+    .icon-button {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: #63738a;
+    }
+    .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 20px 0 16px; }
+    h1 { margin: 0; font-size: 19px; font-weight: 730; letter-spacing: -.035em; }
+    .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+    .heading-actions { display: flex; align-items: center; gap: 8px; }
+    .shift-select {
+      max-width: 170px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: #53647c;
+      font-size: 10px;
+    }
+    .primary-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 11px;
+      border: 0;
+      border-radius: 7px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .primary-button:hover { background: #1c63bb; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .metric, .panel { min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: var(--shadow); }
+    .metric { position: relative; padding: 13px 14px 12px; overflow: hidden; }
+    .metric::after { position: absolute; top: 0; right: 0; left: 0; height: 2px; background: var(--metric-color, var(--blue)); content: ""; }
+    .metric-head { display: flex; align-items: center; justify-content: space-between; color: #66768c; font-size: 10px; }
+    .metric-icon { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 7px; background: #edf4fc; color: var(--metric-color, var(--blue)); font-size: 13px; }
+    .metric-value { margin: 7px 0 1px; color: #1b2d46; font-size: 23px; font-weight: 760; letter-spacing: -.05em; }
+    .metric-note { color: #8490a1; font-size: 9px; }
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr); gap: 11px; margin-top: 11px; }
+    .panel { padding: 14px; }
+    .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .panel-title { margin: 0; color: #25364e; font-size: 11px; font-weight: 720; }
+    .panel-subtitle { margin: 3px 0 0; color: #8a95a4; font-size: 9px; }
+    .control {
+      max-width: 190px;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: #596b83;
+      font-size: 9px;
+    }
+    .chart-wrap { height: 193px; margin-top: 9px; }
+    .chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
+    .chart-grid { stroke: #edf1f5; stroke-width: 1; }
+    .chart-line { fill: none; stroke: #3186df; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.5; }
+    .chart-area { fill: url(#chartFill); }
+    .chart-dot { fill: #fff; stroke: #3186df; stroke-width: 2; }
+    .chart-label { fill: #8a96a6; font-size: 8px; }
+    .chart-key { display: flex; align-items: center; gap: 6px; color: #77869a; font-size: 9px; }
+    .chart-key i { width: 7px; height: 7px; border-radius: 50%; background: #3186df; }
+    .process-list { display: grid; gap: 9px; margin-top: 15px; }
+    .process-row { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+    .process-mark { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 6px; background: #edf4fc; color: #347fc9; font-size: 9px; font-weight: 750; }
+    .process-info { min-width: 0; }
+    .process-info strong { display: block; overflow: hidden; color: #34465e; font-size: 9px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .process-info span { color: #8a96a6; font-size: 8px; }
+    .process-value { color: #53647b; font-size: 9px; font-weight: 700; }
+    .progress { height: 3px; margin-top: 4px; overflow: hidden; border-radius: 3px; background: #edf1f5; }
+    .progress span { display: block; height: 100%; border-radius: inherit; background: #448fdb; }
+    .detail-panel { margin-top: 11px; padding: 0; overflow: hidden; }
+    .detail-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 14px 9px; }
+    .table-wrap { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    .data-table th { padding: 8px 12px; background: #f7f9fc; color: #8a96a6; font-size: 8px; font-weight: 650; text-align: left; }
+    .data-table td { padding: 8px 12px; border-top: 1px solid #eff2f6; color: #4e5f75; font-size: 9px; }
+    .data-table th:first-child, .data-table td:first-child { padding-left: 15px; }
+    .stage-name { display: flex; align-items: center; gap: 8px; color: #34465e; font-weight: 650; }
+    .stage-index { display: grid; width: 20px; height: 20px; place-items: center; border-radius: 5px; background: #edf4fc; color: #347fc9; font-size: 8px; }
+    .pill { display: inline-block; padding: 3px 6px; border-radius: 4px; background: #eaf5f1; color: #318066; font-size: 8px; }
+    .pill-empty { background: #f1f3f6; color: #8994a2; }
+    .data-footer { padding: 9px 14px; border-top: 1px solid var(--line); color: #8b96a4; font-size: 8px; }
+    .source-card { margin-top: 11px; padding: 12px 14px; border: 1px solid #dce9f7; border-radius: 8px; background: #f7fbff; }
+    .source-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .source-head strong { color: #385776; font-size: 9px; }
+    .source-card p { margin: 5px 0 0; color: #6d8098; font-size: 9px; }
+    .toast { position: fixed; right: 18px; bottom: 18px; z-index: 5; max-width: min(420px, calc(100vw - 36px)); padding: 10px 13px; border-radius: 7px; background: #21354e; color: #fff; font-size: 11px; opacity: 0; pointer-events: none; transform: translateY(7px); transition: .18s; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .file-input { display: none; }
+    @media (max-width: 950px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 650px) {
+      .sidebar { width: 54px; align-items: center; padding: 14px 5px; }
+      .brand { padding: 2px 0 22px; }
+      .brand-text, .nav-label, .nav button span:not(.nav-icon), .sidebar-note { display: none; }
+      .nav { width: 100%; }
+      .nav button { justify-content: center; padding: 10px 4px; }
+      .nav-icon { font-size: 16px; }
+      main { margin-left: 54px; padding: 0 12px 24px; }
+      .topbar-wrap { margin: 0 -12px; }
+      .topbar { min-height: 53px; padding: 0 12px; }
+      .sync-label { font-size: 0; }
+      .page-heading { align-items: flex-start; padding: 17px 0 13px; }
+      h1 { font-size: 16px; }
+      .heading-actions { flex-direction: column; align-items: stretch; }
+      .shift-select { max-width: 120px; }
+      .metrics { gap: 8px; }
+      .metric { padding: 11px; }
+      .metric-value { font-size: 20px; }
+      .metric-head { font-size: 9px; }
+      .panel { padding: 12px; }
+      .detail-panel { padding: 0; }
+      .chart-wrap { height: 170px; }
+    }
+    :root {
+      color-scheme: dark;
+      --navy: #030d18;
+      --blue: #10c3ed;
+      --ink: #e5f3fb;
+      --muted: #7894a8;
+      --line: #123247;
+      --paper: #061523;
+      --canvas: #020912;
+      --green: #20de9a;
+      --amber: #ffc45c;
+      --red: #ff5965;
+      --shadow: 0 0 0 1px rgb(4 191 236 / 4%), 0 5px 18px rgb(0 0 0 / 25%);
+    }
+    body {
+      color: #e3f0f8;
+      background:
+        radial-gradient(ellipse at 60% -25%, rgb(0 151 199 / 10%), transparent 55%),
+        #020912;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    .sidebar {
+      width: 190px;
+      align-items: stretch;
+      padding: 16px 10px;
+      border-right: 1px solid #103044;
+      background: linear-gradient(180deg, #03101d, #020a13 80%);
+      box-shadow: 5px 0 22px rgb(0 0 0 / 16%);
+    }
+    .brand {
+      justify-content: flex-start;
+      gap: 10px;
+      padding: 2px 4px 23px;
+    }
+    .brand-mark { width: 54px; height: 38px; border-radius: 8px; }
+    .brand-mark:hover {
+      box-shadow: 0 0 21px rgb(0 197 239 / 38%), 0 4px 12px rgb(0 0 0 / 32%);
+      transform: translateY(-1px);
+    }
+    .brand-text {
+      display: block;
+      color: #eaf6fd;
+      font-size: 9px;
+      letter-spacing: .045em;
+    }
+    .brand-text span { color: #7997aa; font-size: 7px; }
+    .nav-label { display: none; }
+    .nav { gap: 5px; }
+    .nav button {
+      min-height: 42px;
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 11px;
+      padding: 9px 12px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      color: #8ca8bc;
+      text-align: left;
+      font-size: 11px;
+      transition: color .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+    .nav button:hover, .nav button.active {
+      border-color: #0d6882;
+      background: linear-gradient(110deg, rgb(0 178 225 / 20%), rgb(5 38 57 / 80%));
+      box-shadow: inset 3px 0 #11cdf2, 0 0 15px rgb(0 187 232 / 9%);
+      color: #18d4f5;
+    }
+    .nav-icon {
+      width: 20px;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+    .sidebar-note {
+      padding: 12px 9px 3px;
+      color: #547487;
+      font-size: 8px;
+      text-align: left;
+    }
+    main { margin-left: 190px; padding: 0 20px 24px; }
+    .topbar-wrap { margin: 0 -20px; }
+    .topbar {
+      min-height: 66px;
+      padding: 0 16px;
+      border-bottom-color: #102c3e;
+      background: rgb(3 14 25 / 96%);
+    }
+    .top-title {
+      color: #e6f5ff;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+    .top-title span { color: #496578; }
+    .top-actions { gap: 12px; }
+    .sync-label {
+      color: #ff7580;
+      font-size: 9px;
+      font-weight: 750;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    .sync-dot {
+      width: 8px;
+      height: 8px;
+      background: #ff5061;
+      box-shadow: 0 0 11px #ff354c;
+      animation: live-pulse 1.9s ease-in-out infinite;
+    }
+    .icon-button {
+      width: 32px;
+      height: 32px;
+      border-color: #12506a;
+      background: #061827;
+      color: #12c8ed;
+    }
+    .page-heading { padding: 16px 0 13px; }
+    h1 {
+      color: #eef8ff;
+      font-size: 18px;
+      font-weight: 780;
+      letter-spacing: .01em;
+      text-transform: uppercase;
+    }
+    .subtitle { color: #7894a8; }
+    .shift-select, .control {
+      border-color: #17425a;
+      background: #061725;
+      color: #d7edf8;
+    }
+    .shift-select:focus, .control:focus {
+      border-color: #08c0eb;
+      outline: 2px solid rgb(8 192 235 / 12%);
+    }
+    .primary-button {
+      border: 1px solid #12c4e6;
+      background: linear-gradient(135deg, #087ea7, #07587d);
+      box-shadow: 0 0 14px rgb(0 177 222 / 15%);
+    }
+    .primary-button:hover {
+      background: linear-gradient(135deg, #0998c4, #076b91);
+      box-shadow: 0 0 18px rgb(0 196 239 / 25%);
+    }
+    .metrics {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 9px;
+    }
+    .metric, .panel {
+      border-color: #103148;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #071a2b, #04111e 82%);
+      box-shadow: var(--shadow);
+    }
+    .metric {
+      min-height: 105px;
+      padding: 12px 12px 11px;
+    }
+    .metric::after {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--metric-color, #09c7ef), transparent);
+      opacity: .8;
+    }
+    .metric-head { color: #c1d3df; font-size: 9px; font-weight: 700; }
+    .metric-icon {
+      border: 1px solid rgb(16 195 237 / 18%);
+      background: rgb(5 56 79 / 50%);
+      color: var(--metric-color, #11c6ef);
+    }
+    .metric-value {
+      margin-top: 6px;
+      color: #f3f9ff;
+      font-size: 25px;
+      text-shadow: 0 0 15px rgb(175 230 255 / 13%);
+    }
+    .metric-note { color: #7e9aad; font-size: 8px; }
+    .dashboard-grid {
+      grid-template-columns: minmax(0, 1.2fr) minmax(310px, 1fr);
+      gap: 9px;
+      margin-top: 9px;
+    }
+    .panel { padding: 12px; }
+    .panel-heading { align-items: center; }
+    .panel-title {
+      color: #e7f4fc;
+      font-size: 11px;
+      font-weight: 760;
+      letter-spacing: .035em;
+      text-transform: uppercase;
+    }
+    .panel-title::before {
+      margin-right: 7px;
+      color: #11c8ee;
+      content: "▤";
+    }
+    .panel-subtitle { color: #7892a5; font-size: 9px; }
+    .chart-wrap { height: 175px; margin-top: 4px; }
+    .chart-grid { stroke: #102b3b; }
+    .chart-line {
+      filter: drop-shadow(0 0 4px rgb(0 201 247 / 54%));
+      stroke: #10d0f5;
+      stroke-width: 2.5;
+    }
+    .chart-area {
+      fill: url(#chartFill);
+      filter: drop-shadow(0 0 8px rgb(0 162 236 / 15%));
+    }
+    .chart-dot {
+      fill: #dffaff;
+      filter: drop-shadow(0 0 4px rgb(0 205 251 / 85%));
+      stroke: #10d0f5;
+    }
+    .chart-label { fill: #91a9bc; }
+    .chart-key { color: #8ca9bb; }
+    .chart-key i {
+      background: #10d0f5;
+      box-shadow: 0 0 8px rgb(16 208 245 / 75%);
+    }
+    .process-list { gap: 7px; margin-top: 11px; }
+    .process-row { grid-template-columns: 27px minmax(0, 1fr) auto; gap: 7px; }
+    .process-mark {
+      border: 1px solid rgb(17 192 235 / 25%);
+      background: #082b40;
+      color: #36d9f5;
+    }
+    .process-info strong { color: #8fe9f8; font-size: 9px; }
+    .process-value { color: #e8f4fb; font-size: 10px; }
+    .progress { height: 4px; background: #10283a; }
+    .progress span {
+      background: linear-gradient(90deg, #078ed2, #17d6f1);
+      box-shadow: 0 0 8px rgb(0 198 240 / 35%);
+    }
+    .detail-panel {
+      display: flex;
+      height: 50vh;
+      min-height: 300px;
+      max-height: 560px;
+      flex-direction: column;
+      margin-top: 9px;
+      padding: 0;
+    }
+    .detail-head { padding: 10px 12px 8px; }
+    .table-wrap {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-color: #15516a #06121e;
+      scrollbar-width: thin;
+    }
+    .data-table th {
+      position: sticky;
+      z-index: 1;
+      top: 0;
+      background: linear-gradient(90deg, #087ba9, #07517a);
+      color: #e6f8ff;
+      font-size: 9px;
+    }
+    .data-table td {
+      border-top-color: #0d2939;
+      color: #c4d7e2;
+      font-size: 9px;
+    }
+    .data-table tbody tr { transition: background .14s ease; }
+    .data-table tbody tr:hover { background: rgb(8 93 125 / 15%); }
+    .stage-name { color: #e2f0f8; }
+    .stage-index {
+      border: 1px solid rgb(25 195 236 / 28%);
+      background: #0a3046;
+      color: #48d9f3;
+    }
+    .pill {
+      border: 1px solid rgb(33 219 140 / 20%);
+      border-radius: 999px;
+      background: #063226;
+      color: #63e9a7;
+    }
+    .pill-empty {
+      border-color: #233848;
+      background: #111e2a;
+      color: #8999a7;
+    }
+    .data-footer { border-top-color: #102b3b; color: #718b9f; }
+    .ipqc-panel { margin-top: 10px; }
+    .ipqc-empty {
+      display: grid;
+      min-height: 120px;
+      place-content: center;
+      gap: 5px;
+      margin-top: 12px;
+      padding: 18px;
+      border: 1px dashed #1b4960;
+      border-radius: 7px;
+      background: rgb(3 16 28 / 55%);
+      text-align: center;
+    }
+    .ipqc-empty strong { color: #bfd2df; font-size: 12px; }
+    .ipqc-empty span { color: #7892a5; font-size: 10px; }
+    .ipqc-actions { display: flex; align-items: center; gap: 9px; }
+    .ipqc-add-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 11px;
+      border: 1px solid #15546b;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #08273a, #061a2a);
+      color: #75e8f7;
+      font-size: 10px;
+      font-weight: 700;
+      transition: border-color .2s ease, background .2s ease, transform .2s ease;
+    }
+    .ipqc-add-button:hover {
+      transform: translateY(-1px);
+      border-color: #18c6e5;
+      background: #0a3042;
+    }
+    .ipqc-form {
+      display: grid;
+      grid-template-columns: minmax(180px, 1.2fr) minmax(140px, .8fr) minmax(175px, 1fr);
+      gap: 10px;
+      margin-top: 13px;
+      padding: 13px;
+      border: 1px solid #153a4f;
+      border-radius: 7px;
+      background: rgb(3 16 28 / 75%);
+    }
+    .ipqc-form[hidden] { display: none; }
+    .ipqc-field { display: grid; min-width: 0; gap: 5px; }
+    .ipqc-field-wide { grid-column: 1 / -1; }
+    .ipqc-field label { color: #a9c3d2; font-size: 10px; font-weight: 650; }
+    .ipqc-field input, .ipqc-field select, .ipqc-field textarea, .ipqc-note {
+      width: 100%;
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid #193d51;
+      border-radius: 5px;
+      outline: none;
+      background: #04121f;
+      color: #e2f1f9;
+      font: inherit;
+      font-size: 11px;
+    }
+    .ipqc-field textarea, .ipqc-note { min-height: 62px; resize: vertical; }
+    .ipqc-field input:focus, .ipqc-field select:focus, .ipqc-field textarea:focus, .ipqc-note:focus {
+      border-color: #11bfe2;
+      box-shadow: 0 0 0 2px rgb(17 191 226 / 12%);
+    }
+    .ipqc-form-footer { display: flex; grid-column: 1 / -1; justify-content: flex-end; gap: 8px; }
+    .ipqc-cancel {
+      padding: 8px 11px;
+      border: 1px solid #294454;
+      border-radius: 6px;
+      background: transparent;
+      color: #aec2ce;
+      font-size: 10px;
+    }
+    .ipqc-list { display: grid; gap: 9px; margin-top: 12px; }
+    .ipqc-list[hidden], .ipqc-empty[hidden] { display: none; }
+    .ipqc-item {
+      padding: 12px;
+      border: 1px solid #15394c;
+      border-left: 3px solid #df9c43;
+      border-radius: 6px;
+      background: linear-gradient(110deg, rgb(30 24 17 / 44%), rgb(4 17 29 / 85%));
+    }
+    .ipqc-item.is-confirmed {
+      border-left-color: #22d89a;
+      background: linear-gradient(110deg, rgb(7 40 32 / 48%), rgb(4 17 29 / 85%));
+    }
+    .ipqc-item-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .ipqc-item-title { margin: 0; color: #e8f4fb; font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+    .ipqc-item-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 5px; color: #8da6b7; font-size: 9px; }
+    .ipqc-check {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 7px;
+      color: #b7cbd7;
+      font-size: 10px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .ipqc-check input { width: 16px; height: 16px; accent-color: #1ecb8a; cursor: pointer; }
+    .ipqc-note-wrap { display: grid; gap: 5px; margin-top: 10px; }
+    .ipqc-note-wrap label { color: #96b1c0; font-size: 9px; font-weight: 650; }
+    .ipqc-note { min-height: 54px; }
+    .ipqc-item-remove {
+      margin-top: 8px;
+      padding: 4px 0;
+      border: 0;
+      background: transparent;
+      color: #e68c8c;
+      font-size: 9px;
+    }
+    .ipqc-item-remove:hover { color: #ffaaaa; text-decoration: underline; }
+    .ipqc-storage-note { margin: 9px 0 0; color: #718b9f; font-size: 9px; }
+    .source-card {
+      border-color: #12415a;
+      background: linear-gradient(100deg, #061a2b, #051321);
+    }
+    .source-head strong { color: #c7ebf7; }
+    .source-card p { color: #89a5b8; }
+    .toast {
+      border: 1px solid #16516a;
+      background: #061725;
+      box-shadow: 0 0 20px rgb(0 0 0 / 30%);
+      color: #e4f4fc;
+    }
+    .table-wrap::-webkit-scrollbar { height: 8px; }
+    .table-wrap::-webkit-scrollbar-track { background: #06121e; }
+    .table-wrap::-webkit-scrollbar-thumb { border: 2px solid #06121e; border-radius: 9px; background: #15516a; }
+    @keyframes live-pulse {
+      50% { opacity: .55; box-shadow: 0 0 4px #ff354c; }
+    }
+    @media (max-width: 950px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid { grid-template-columns: minmax(0, 1fr) minmax(270px, .9fr); }
+    }
+    @media (max-width: 700px) {
+      .sidebar { width: 60px; align-items: center; padding: 12px 5px; }
+      .brand { padding: 2px 0 18px; }
+      .brand-mark { width: 44px; height: 35px; border-radius: 8px; }
+      .brand-text { display: none; }
+      .nav { gap: 5px; }
+      .nav button { min-height: 56px; flex-direction: column; gap: 4px; padding: 6px 2px; font-size: 8px; text-align: center; }
+      .nav-icon { width: auto; font-size: 17px; }
+      .sidebar-note { display: none; }
+      main { margin-left: 60px; padding: 0 9px 20px; }
+      .topbar-wrap { margin: 0 -9px; }
+      .topbar { min-height: 56px; padding: 0 10px; }
+      .top-title { max-width: 56vw; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      .top-actions { gap: 6px; }
+      .sync-label { gap: 4px; font-size: 0; }
+      .sync-dot { width: 7px; height: 7px; }
+      .page-heading { padding: 12px 0 10px; }
+      h1 { max-width: 52vw; font-size: 13px; }
+      .subtitle { font-size: 8px; }
+      .heading-actions { flex-direction: row; gap: 5px; }
+      .shift-select { max-width: 112px; padding: 7px 5px; font-size: 8px; }
+      .primary-button { gap: 4px; padding: 7px 7px; font-size: 8px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+      .metric { min-height: 88px; padding: 9px; }
+      .metric-value { font-size: 21px; }
+      .dashboard-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+      .panel { padding: 10px; }
+      .chart-wrap { height: 154px; }
+      .detail-panel { height: 44vh; min-height: 250px; padding: 0; }
+      .detail-head { padding: 9px; }
+      .data-table th, .data-table td { padding-right: 8px; padding-left: 8px; }
+      .data-table th:first-child, .data-table td:first-child { padding-left: 9px; }
+      .ipqc-empty { min-height: 100px; padding: 14px; }
+      .ipqc-form { grid-template-columns: minmax(0, 1fr); }
+      .ipqc-field-wide, .ipqc-form-footer { grid-column: auto; }
+      .ipqc-actions { gap: 6px; }
+      .ipqc-add-button { padding: 7px 8px; font-size: 9px; }
+      .ipqc-item-head { gap: 7px; }
+      .ipqc-check { gap: 4px; font-size: 9px; }
+    }
+    @media (max-width: 390px) {
+      .top-title { max-width: 48vw; font-size: 10px; }
+      .heading-actions { flex-direction: column; align-items: flex-end; }
+      .shift-select { max-width: 130px; }
+      .metric-head { font-size: 8px; }
+      .metric-icon { width: 21px; height: 21px; }
+      .chart-wrap { height: 135px; }
+    }
+    @media (min-width: 701px) {
+      .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .brand-text { font-size: 11px; }
+      .brand-text span { font-size: 9px; }
+      .nav button { min-height: 46px; font-size: 13px; }
+      .nav-icon { font-size: 19px; }
+      .sidebar-note { font-size: 10px; }
+      .top-title { font-size: 17px; }
+      .sync-label { font-size: 11px; }
+      h1 { font-size: 22px; }
+      .subtitle { font-size: 12px; }
+      .shift-select, .control { font-size: 12px; }
+      .primary-button { padding: 10px 14px; font-size: 12px; }
+      .metric { min-height: 116px; padding: 14px 15px; }
+      .metric-head { font-size: 12px; }
+      .metric-icon { width: 31px; height: 31px; font-size: 16px; }
+      .metric-value { font-size: 31px; }
+      .metric-note { font-size: 10px; }
+      .panel { padding: 15px; }
+      .panel-title { font-size: 14px; }
+      .panel-subtitle { font-size: 11px; }
+      .chart-wrap { height: 195px; }
+      .chart-label { font-size: 9px; }
+      .chart-key { font-size: 11px; }
+      .process-list { gap: 9px; }
+      .process-mark { width: 30px; height: 30px; font-size: 11px; }
+      .process-row { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 9px; }
+      .process-info strong { font-size: 11px; }
+      .process-info span, .process-value { font-size: 11px; }
+      .progress { height: 5px; }
+      .detail-head { padding: 14px 16px 10px; }
+      .data-table th { padding-top: 11px; padding-bottom: 11px; font-size: 11px; }
+      .data-table td { padding-top: 10px; padding-bottom: 10px; font-size: 11px; }
+      .stage-index { width: 25px; height: 25px; font-size: 10px; }
+      .pill { padding: 4px 9px; font-size: 10px; }
+      .data-footer, .source-card p { font-size: 10px; }
+      .source-head strong { font-size: 11px; }
+    }
+    .metric, .panel, .source-card, .nav button, .icon-button, .primary-button {
+      transition:
+        border-color .22s ease,
+        background-color .22s ease,
+        box-shadow .25s ease,
+        color .2s ease,
+        transform .25s cubic-bezier(.2, .8, .2, 1);
+    }
+    .metric {
+      animation: card-rise .55s cubic-bezier(.2, .75, .2, 1) both;
+    }
+    .metric:nth-child(2) { animation-delay: .07s; }
+    .metric:nth-child(3) { animation-delay: .14s; }
+    .metric:nth-child(4) { animation-delay: .21s; }
+    .metric:nth-child(5) { animation-delay: .28s; }
+    .metric:hover {
+      transform: translateY(-4px);
+      border-color: rgb(16 195 237 / 55%);
+      box-shadow: 0 9px 26px rgb(0 0 0 / 28%), 0 0 17px rgb(0 195 237 / 11%);
+    }
+    .metric:hover .metric-icon {
+      transform: scale(1.08) rotate(-4deg);
+    }
+    .metric-icon { transition: transform .28s cubic-bezier(.2, .8, .2, 1); }
+    .dashboard-grid > .panel {
+      animation: card-rise .65s cubic-bezier(.2, .75, .2, 1) both;
+      animation-delay: .12s;
+    }
+    .dashboard-grid > .panel:nth-child(2) { animation-delay: .2s; }
+    .detail-panel { animation: card-rise .65s .24s cubic-bezier(.2, .75, .2, 1) both; }
+    .source-card { animation: card-rise .65s .3s cubic-bezier(.2, .75, .2, 1) both; }
+    .nav button:hover { transform: translateX(3px); }
+    .icon-button:hover, .primary-button:hover {
+      transform: translateY(-2px);
+    }
+    .process-row { animation: row-enter .4s both; }
+    .process-row:nth-child(2) { animation-delay: .04s; }
+    .process-row:nth-child(3) { animation-delay: .08s; }
+    .process-row:nth-child(4) { animation-delay: .12s; }
+    .process-row:nth-child(5) { animation-delay: .16s; }
+    .process-row:nth-child(6) { animation-delay: .2s; }
+    .process-row:nth-child(7) { animation-delay: .24s; }
+    .progress span {
+      transform: scaleX(0);
+      transform-origin: left center;
+      animation: progress-fill .9s .18s cubic-bezier(.2, .8, .2, 1) forwards;
+    }
+    .chart-line {
+      stroke-dasharray: 2000;
+      stroke-dashoffset: 2000;
+      animation: chart-draw 1.25s .2s cubic-bezier(.3, .7, .2, 1) forwards;
+    }
+    .chart-dot {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: point-pop .35s cubic-bezier(.2, .8, .2, 1) both;
+    }
+    .chart-dot:nth-child(2) { animation-delay: .12s; }
+    .chart-dot:nth-child(3) { animation-delay: .2s; }
+    .chart-dot:nth-child(4) { animation-delay: .28s; }
+    .chart-dot:nth-child(5) { animation-delay: .36s; }
+    .chart-dot:nth-child(6) { animation-delay: .44s; }
+    .chart-dot:nth-child(7) { animation-delay: .52s; }
+    .chart-dot:nth-child(8) { animation-delay: .6s; }
+    @keyframes card-rise {
+      from { opacity: 0; translate: 0 12px; }
+      to { opacity: 1; translate: 0 0; }
+    }
+    @keyframes row-enter {
+      from { opacity: 0; translate: 8px 0; }
+      to { opacity: 1; translate: 0 0; }
+    }
+    @keyframes progress-fill {
+      to { transform: scaleX(1); }
+    }
+    @keyframes chart-draw {
+      to { stroke-dashoffset: 0; }
+    }
+    @keyframes point-pop {
+      from { opacity: 0; transform: scale(.35); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Điều hướng chính">
+      <div class="brand"><img class="brand-mark" src="assets/pth-logo.png" alt="PTH logo"><span class="brand-text">PTH<span>CONTROL TOWER</span></span></div>
+      <div class="nav-label">Sản xuất</div>
+      <nav class="nav">
+        <button class="active" type="button"><span class="nav-icon">⌂</span><span>Tổng quan</span></button>
+        <button type="button" data-action="chart"><span class="nav-icon">▥</span><span>Sản lượng</span></button>
+        <button type="button" data-action="processes"><span class="nav-icon">♧</span><span>Công đoạn</span></button>
+        <button type="button" data-action="source"><span class="nav-icon">▤</span><span>Dữ liệu</span></button>
+      </nav>
+      <div class="sidebar-note">Better Process<br>Higher Output<br>Stronger Together</div>
+    </aside>
+
+    <main>
+      <div class="topbar-wrap">
+        <header class="topbar">
+          <div class="top-title">PTH <span aria-hidden="true">/</span> Bảng điều khiển sản xuất</div>
+          <div class="top-actions">
+            <span class="sync-label"><i class="sync-dot"></i><span id="syncStatus">Dữ liệu mẫu từ Excel</span></span>
+            <button class="icon-button" type="button" id="syncButton" aria-label="Chọn file Excel để đồng bộ" title="Chọn file Excel để đồng bộ">⟳</button>
+            <input class="file-input" id="fileInput" type="file" accept=".xls,.html,.htm,text/html">
+          </div>
+        </header>
+      </div>
+
+      <section class="page-heading">
+        <div><h1>Production Management Dashboard</h1><p class="subtitle">Kiểm soát sản xuất · Dữ liệu công đoạn từ cột S đến AN</p></div>
+        <div class="heading-actions">
+          <select class="shift-select" id="hourFilter" aria-label="Lọc theo khung giờ"><option value="all">Tất cả khung giờ</option></select>
+          <button class="primary-button" type="button" id="importButton"><span aria-hidden="true">↻</span> Đồng bộ dữ liệu</button>
+        </div>
+      </section>
+
+      <section class="metrics" aria-label="Chỉ số sản xuất">
+        <article class="metric" style="--metric-color:#2473d4"><div class="metric-head"><span>Sản lượng kiểm điện</span><span class="metric-icon">▣</span></div><div class="metric-value" id="totalOutput">—</div><div class="metric-note" id="outputNote">Công đoạn ELECTRICAL_TEST · cột AN</div></article>
+        <article class="metric" style="--metric-color:#169a77"><div class="metric-head"><span>Tổng SMT_WIP</span><span class="metric-icon">◷</span></div><div class="metric-value" id="wipValue">—</div><div class="metric-note">Dòng Total · cột S</div></article>
+        <article class="metric" style="--metric-color:#7485d2"><div class="metric-head"><span>Công đoạn có dữ liệu</span><span class="metric-icon">▤</span></div><div class="metric-value" id="processCount">—</div><div class="metric-note" id="processNote">Trong phạm vi cột S–AN</div></article>
+        <article class="metric" style="--metric-color:#e2a03e"><div class="metric-head"><span>Khung giờ trong file</span><span class="metric-icon">◷</span></div><div class="metric-value" id="hourCount">—</div><div class="metric-note" id="hourNote">Các dòng theo dõi sản xuất</div></article>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="panel" id="productionChart">
+          <div class="panel-heading">
+            <div><h2 class="panel-title">Sản lượng theo giờ</h2><p class="panel-subtitle" id="chartSubtitle">Sản lượng từng khung giờ theo công đoạn</p></div>
+            <select class="control" id="processSelect" aria-label="Chọn công đoạn"></select>
+          </div>
+          <div class="chart-wrap">
+            <svg id="productionSvg" viewBox="0 0 700 200" role="img" aria-label="Biểu đồ sản lượng theo giờ">
+              <defs><linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#398de1" stop-opacity=".18"/><stop offset="100%" stop-color="#398de1" stop-opacity="0"/></linearGradient></defs>
+              <g id="chartGrid"></g><path id="chartArea" class="chart-area"></path><path id="chartLine" class="chart-line"></path><g id="chartPoints"></g><g id="chartLabels"></g>
+            </svg>
+          </div>
+          <div class="chart-key"><i></i><span id="chartLegend">Sản lượng theo giờ</span></div>
+        </article>
+
+        <article class="panel" id="processSummary">
+          <div class="panel-heading"><div><h2 class="panel-title">Sản lượng theo công đoạn</h2><p class="panel-subtitle">Tổng số liệu trong dòng Total của file</p></div></div>
+          <div class="process-list" id="processList"></div>
+        </article>
+      </section>
+
+      <section class="panel detail-panel" id="processTable">
+        <div class="detail-head"><div><h2 class="panel-title">Chi tiết công đoạn</h2><p class="panel-subtitle">Đối chiếu tổng sản lượng và lần ghi nhận gần nhất</p></div><span class="pill" id="rangeBadge">Cột S–AN</span></div>
+        <div class="table-wrap" role="region" aria-label="Bảng chi tiết công đoạn có thể cuộn" tabindex="0">
+          <table class="data-table">
+            <thead><tr><th>Công đoạn</th><th>Tổng trong file</th><th>Giờ gần nhất có số liệu</th><th>Sản lượng giờ đó</th><th>Tình trạng</th></tr></thead>
+            <tbody id="processRows"></tbody>
+          </table>
+        </div>
+        <div class="data-footer" id="dataFooter"></div>
+      </section>
+
+      <section class="panel ipqc-panel" id="ipqcAlerts" aria-labelledby="ipqcTitle">
+        <div class="panel-heading">
+          <div><h2 class="panel-title" id="ipqcTitle">Bất thường IPQC</h2><p class="panel-subtitle">Ghi nhận lỗi, đánh dấu xác nhận và đề xuất phương án cải thiện</p></div>
+          <div class="ipqc-actions">
+            <span class="pill pill-empty" id="ipqcCount">0 lỗi</span>
+            <button class="ipqc-add-button" type="button" id="openIpqcForm"><span aria-hidden="true">＋</span> Ghi nhận lỗi</button>
+          </div>
+        </div>
+        <form class="ipqc-form" id="ipqcForm" hidden>
+          <div class="ipqc-field">
+            <label for="ipqcIssueTitle">Lỗi / nội dung phát hiện</label>
+            <input id="ipqcIssueTitle" name="title" maxlength="140" required placeholder="Ví dụ: Phát hiện mối hàn chưa đạt">
+          </div>
+          <div class="ipqc-field">
+            <label for="ipqcProcess">Công đoạn</label>
+            <select id="ipqcProcess" name="process" required></select>
+          </div>
+          <div class="ipqc-field">
+            <label for="ipqcDetectedAt">Thời gian phát hiện</label>
+            <input id="ipqcDetectedAt" name="detectedAt" type="datetime-local" required>
+          </div>
+          <div class="ipqc-field ipqc-field-wide">
+            <label for="ipqcImprovement">Phương án cải thiện / ghi chú</label>
+            <textarea id="ipqcImprovement" name="improvement" maxlength="1200" placeholder="Nguyên nhân dự kiến, hành động khắc phục và người phụ trách..."></textarea>
+          </div>
+          <div class="ipqc-form-footer">
+            <button class="ipqc-cancel" type="button" id="cancelIpqcForm">Hủy</button>
+            <button class="primary-button" type="submit">Lưu ghi nhận</button>
+          </div>
+        </form>
+        <div class="ipqc-list" id="ipqcList" aria-live="polite"></div>
+        <div class="ipqc-empty" id="ipqcEmpty">
+          <strong>Chưa có lỗi IPQC nào được ghi nhận</strong>
+          <span>Chọn “Ghi nhận lỗi” để thêm lỗi, tích xác nhận và ghi phương án cải thiện.</span>
+        </div>
+        <p class="ipqc-storage-note">Thông tin IPQC do người dùng ghi nhận và được lưu trong trình duyệt này; file Excel hiện không có dữ liệu lỗi để tự phát hiện.</p>
+      </section>
+
+      <section class="source-card" id="dataSource">
+        <div class="source-head"><strong>Nguồn và phạm vi dữ liệu</strong><span class="pill" id="sourceBadge">Excel · S–AN</span></div>
+        <p id="sourceDetails">Đang dùng dữ liệu đã đọc từ file tải xuống.xls. Có thể chọn file Excel xuất dạng HTML (.xls) để đồng bộ lại. File chỉ được xử lý trong trình duyệt.</p>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const initialData = {
+      source: "tải xuống.xls",
+      processes: ["SMT_WIP","ROUTER","VI_AND_CLEAN","SORTING3","PRESS_FIT_CAGE","VI_CAGE","PRESS_FIT_PALADIN","PRE_AOI_SCREW","PRESS_FIT","SORTING","VI_PRESSFIT","ASSY_PALADIN","ASSY_PALADIN_MANUAL","AOI_PHD_SCREW","LINK_CARRIER","TOUCH_UP","AOI_SOLDER","PTH_VI","IPQC_PTH","REMOVE_TAPE","X_RAY_5D","ELECTRICAL_TEST"],
+      hours: [
+        ["07:30-08:30",34,451,443,null,212,203,179,null,365,null,473,543,16,527,675,null,690,691,null,667,null,522],
+        ["08:30-09:30",180,620,628,null,373,371,208,null,393,null,611,747,89,648,619,null,633,634,6,644,null,637],
+        ["09:30-10:30",751,489,488,null,297,290,301,null,254,null,543,622,44,586,564,null,538,610,null,603,null,613],
+        ["10:30-11:30",462,442,447,null,336,339,364,null,183,null,560,513,4,498,537,null,560,530,6,539,null,590],
+        ["11:30-12:30",266,350,347,null,168,168,214,null,80,null,309,463,null,461,449,null,427,273,null,271,null,402],
+        ["12:30-13:30",671,447,445,null,227,225,348,null,211,null,510,541,40,516,728,null,748,643,null,634,null,541],
+        ["13:30-14:30",492,628,636,null,375,378,520,null,201,null,727,641,9,627,680,null,684,928,12,925,null,559],
+        ["14:30-15:30",531,398,416,null,263,267,335,null,246,null,584,662,58,615,584,null,574,659,null,659,null,547],
+        ["15:30-16:30",699,459,468,null,296,297,385,null,207,null,602,552,null,548,535,null,555,549,6,553,null,482],
+        ["16:30-17:30",366,577,564,null,335,324,298,null,305,null,606,743,38,709,431,null,428,434,null,426,null,463],
+        ["17:30-18:30",null,492,505,null,216,226,251,null,208,null,491,675,8,648,425,null,452,437,6,452,null,437],
+        ["18:30-19:30",276,null,null,null,null,null,null,null,null,null,null,1,null,3,null,null,null,null,null,null,null,null],
+        ["19:30-20:30",156,531,503,null,73,68,116,null,335,null,405,382,null,371,626,null,591,560,null,546,null,484],
+        ["20:30-21:30",342,690,717,null,178,179,96,null,446,null,499,485,7,460,738,null,737,748,8,743,null,529],
+        ["21:30-22:30",3,179,177,null,35,33,12,null,116,null,121,145,null,143,185,null,174,88,null,52,null,173],
+        ["22:30-23:30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+        ["00:00-00:30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+        ["00:30-01:30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+        ["01:30-02:30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+        ["02:30-03:30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+        ["03:30-04:30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+        ["04:30-05:30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+        ["05:30-06:30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+        ["06:30-07:30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]
+      ],
+      totals: [5229,6753,6784,null,3384,3368,3627,null,3550,null,7041,7715,313,7360,7776,null,7791,7784,44,7714,null,6979]
+    };
+
+    const storageKey = "pth-production-dashboard-s-an";
+    const ipqcStorageKey = "pth-production-ipqc-issues-v1";
+    const numberFormat = new Intl.NumberFormat("vi-VN");
+    const app = { data: loadSavedData(), hour: "all", processIndex: 21 };
+    let ipqcIssues = loadIpqcIssues();
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    function loadSavedData() {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        return saved ? validateData(JSON.parse(saved)) : initialData;
+      } catch (error) {
+        console.error("Không đọc được dữ liệu đã lưu trong trình duyệt.", error);
+        return initialData;
+      }
+    }
+
+    function validateData(data) {
+      if (!data || !Array.isArray(data.processes) || !Array.isArray(data.hours) || !Array.isArray(data.totals) ||
+          data.processes.length !== data.totals.length || data.processes.length < 1 ||
+          !data.hours.every((row) => Array.isArray(row) && row.length === data.processes.length + 1)) {
+        throw new Error("Cấu trúc dữ liệu công đoạn không hợp lệ.");
+      }
+      return data;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 3200);
+    }
+
+    function loadIpqcIssues() {
+      try {
+        const saved = localStorage.getItem(ipqcStorageKey);
+        if (!saved) return [];
+        const parsed = JSON.parse(saved);
+        if (!Array.isArray(parsed)) throw new Error("Danh sách lỗi IPQC đã lưu không đúng định dạng.");
+        return parsed.filter((issue) =>
+          issue && typeof issue.id === "string" &&
+          typeof issue.title === "string" &&
+          typeof issue.process === "string" &&
+          typeof issue.detectedAt === "string" &&
+          typeof issue.improvement === "string" &&
+          typeof issue.confirmed === "boolean"
+        );
+      } catch (error) {
+        console.error("Không thể tải các ghi nhận IPQC đã lưu.", error);
+        showToast("Không đọc được các ghi nhận IPQC đã lưu trên trình duyệt.");
+        return [];
+      }
+    }
+
+    function saveIpqcIssues(nextIssues) {
+      try {
+        localStorage.setItem(ipqcStorageKey, JSON.stringify(nextIssues));
+        ipqcIssues = nextIssues;
+        renderIpqcIssues();
+        return true;
+      } catch (error) {
+        console.error("Không thể lưu ghi nhận IPQC.", error);
+        showToast("Không lưu được thay đổi IPQC. Kiểm tra quyền lưu trữ của trình duyệt.");
+        return false;
+      }
+    }
+
+    function populateIpqcProcessSelect() {
+      const select = document.getElementById("ipqcProcess");
+      const previousValue = select.value;
+      select.replaceChildren();
+      const unassigned = document.createElement("option");
+      unassigned.value = "";
+      unassigned.textContent = "Chọn công đoạn";
+      select.append(unassigned);
+      app.data.processes.forEach((process) => {
+        const option = document.createElement("option");
+        option.value = process;
+        option.textContent = process;
+        select.append(option);
+      });
+      select.value = app.data.processes.includes(previousValue) ? previousValue : "";
+    }
+
+    function formatIssueDate(value) {
+      if (!value) return "Chưa ghi thời gian";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString("vi-VN");
+    }
+
+    function renderIpqcIssues() {
+      const list = document.getElementById("ipqcList");
+      const empty = document.getElementById("ipqcEmpty");
+      const countBadge = document.getElementById("ipqcCount");
+      list.replaceChildren();
+      list.hidden = ipqcIssues.length === 0;
+      empty.hidden = ipqcIssues.length > 0;
+
+      const confirmedCount = ipqcIssues.filter((issue) => issue.confirmed).length;
+      countBadge.textContent = ipqcIssues.length
+        ? `${ipqcIssues.length} lỗi · ${confirmedCount} đã xác nhận`
+        : "0 lỗi";
+      countBadge.className = ipqcIssues.length > 0 && confirmedCount === ipqcIssues.length
+        ? "pill"
+        : "pill pill-empty";
+
+      ipqcIssues.forEach((issue) => {
+        const item = document.createElement("article");
+        item.className = `ipqc-item${issue.confirmed ? " is-confirmed" : ""}`;
+        const header = document.createElement("div");
+        header.className = "ipqc-item-head";
+        const details = document.createElement("div");
+        const title = document.createElement("h3");
+        title.className = "ipqc-item-title";
+        title.textContent = issue.title;
+        const meta = document.createElement("div");
+        meta.className = "ipqc-item-meta";
+        const process = document.createElement("span");
+        process.textContent = issue.process || "Chưa chọn công đoạn";
+        const detectedAt = document.createElement("span");
+        detectedAt.textContent = formatIssueDate(issue.detectedAt);
+        meta.append(process, detectedAt);
+        details.append(title, meta);
+
+        const confirmLabel = document.createElement("label");
+        confirmLabel.className = "ipqc-check";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "ipqc-confirm";
+        checkbox.dataset.issueId = issue.id;
+        checkbox.checked = issue.confirmed;
+        checkbox.setAttribute("aria-label", `Xác nhận lỗi: ${issue.title}`);
+        const confirmText = document.createElement("span");
+        confirmText.textContent = issue.confirmed ? "Đã xác nhận" : "Đánh dấu lỗi";
+        confirmLabel.append(checkbox, confirmText);
+        header.append(details, confirmLabel);
+
+        const noteWrap = document.createElement("div");
+        noteWrap.className = "ipqc-note-wrap";
+        const noteLabel = document.createElement("label");
+        noteLabel.htmlFor = `ipqc-note-${issue.id}`;
+        noteLabel.textContent = "Phương án cải thiện / ghi chú";
+        const note = document.createElement("textarea");
+        note.id = `ipqc-note-${issue.id}`;
+        note.className = "ipqc-note";
+        note.dataset.issueId = issue.id;
+        note.maxLength = 1200;
+        note.placeholder = "Ghi nguyên nhân, hành động khắc phục và người phụ trách...";
+        note.value = issue.improvement;
+        noteWrap.append(noteLabel, note);
+
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.className = "ipqc-item-remove";
+        removeButton.dataset.issueId = issue.id;
+        removeButton.textContent = "Xóa ghi nhận";
+        removeButton.setAttribute("aria-label", `Xóa ghi nhận lỗi: ${issue.title}`);
+
+        item.append(header, noteWrap, removeButton);
+        list.append(item);
+      });
+    }
+
+    function columnLetter(index) {
+      let value = index + 19;
+      let result = "";
+      while (value > 0) {
+        const remainder = (value - 1) % 26;
+        result = String.fromCharCode(65 + remainder) + result;
+        value = Math.floor((value - 1) / 26);
+      }
+      return result;
+    }
+
+    function formatNumber(value) {
+      return Number.isFinite(Number(value)) ? numberFormat.format(Number(value)) : "—";
+    }
+
+    function getTotals() {
+      return app.data.processes.map((_, index) => {
+        const rawTotal = app.data.totals[index];
+        const parsed = Number(rawTotal);
+        if (rawTotal !== null && rawTotal !== "" && Number.isFinite(parsed)) return parsed;
+        return app.data.hours.reduce((sum, row) => sum + (Number.isFinite(Number(row[index + 1])) ? Number(row[index + 1]) : 0), 0);
+      });
+    }
+
+    function filteredHours() {
+      return app.data.hours.filter((row) => app.hour === "all" || row[0] === app.hour);
+    }
+
+    function latestFor(index) {
+      const hours = filteredHours();
+      for (let position = hours.length - 1; position >= 0; position -= 1) {
+        const value = hours[position][index + 1];
+        if (value !== null && value !== "" && Number.isFinite(Number(value))) return { hour: hours[position][0], value: Number(value) };
+      }
+      return null;
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value;
+    }
+
+    function renderSelects() {
+      const select = document.getElementById("processSelect");
+      select.replaceChildren();
+      app.data.processes.forEach((process, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = `${columnLetter(index)} · ${process}`;
+        select.append(option);
+      });
+      app.processIndex = Math.min(app.processIndex, app.data.processes.length - 1);
+      select.value = String(app.processIndex);
+
+      const hourSelect = document.getElementById("hourFilter");
+      const currentHour = app.hour;
+      hourSelect.replaceChildren();
+      const all = document.createElement("option");
+      all.value = "all";
+      all.textContent = "Tất cả khung giờ";
+      hourSelect.append(all);
+      app.data.hours.forEach((row) => {
+        const option = document.createElement("option");
+        option.value = row[0];
+        option.textContent = row[0];
+        hourSelect.append(option);
+      });
+      hourSelect.value = app.data.hours.some((row) => row[0] === currentHour) ? currentHour : "all";
+      app.hour = hourSelect.value;
+      populateIpqcProcessSelect();
+    }
+
+    function renderMetrics(totals) {
+      const finalIndex = app.data.processes.indexOf("ELECTRICAL_TEST");
+      const wipIndex = app.data.processes.indexOf("SMT_WIP");
+      const active = totals.filter((value) => value > 0).length;
+      const outputTotal = finalIndex >= 0 ? totals[finalIndex] : null;
+      const lastOutput = finalIndex >= 0 ? latestFor(finalIndex) : null;
+      setText("totalOutput", formatNumber(outputTotal));
+      setText("outputNote", finalIndex >= 0 ? `Cột ${columnLetter(finalIndex)} · ELECTRICAL_TEST` : "Không có cột ELECTRICAL_TEST trong file");
+      setText("wipValue", formatNumber(wipIndex >= 0 ? totals[wipIndex] : null));
+      setText("processCount", `${active} / ${app.data.processes.length}`);
+      setText("processNote", `${app.data.processes.length - active} công đoạn không có số liệu`);
+      setText("hourCount", String(filteredHours().length));
+      setText("hourNote", app.hour === "all" ? "Khung giờ có trong file Excel" : `Đang lọc ${app.hour}`);
+      setText("syncStatus", app.data.source === "tải xuống.xls" ? "Dữ liệu từ Excel" : "Đã đồng bộ file Excel");
+      setText("sourceBadge", `Excel · ${app.data.processes.length} công đoạn`);
+      setText("sourceDetails", `Nguồn: ${app.data.source}. Đọc các cột S–AN; ${app.data.hours.length} khung giờ và dòng Total. File được xử lý tại trình duyệt, không tải lên máy chủ.`);
+      const lastHour = lastOutput ? `${lastOutput.hour} · ${formatNumber(lastOutput.value)} pcs` : "Chưa có số liệu";
+      setText("chartSubtitle", `ELECTRICAL_TEST · sản lượng giờ gần nhất: ${lastHour}`);
+      setText("chartLegend", `${app.data.processes[app.processIndex]} · pcs`);
+    }
+
+    function makeSvgElement(name, attributes) {
+      const element = document.createElementNS(svgNS, name);
+      Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, String(value)));
+      return element;
+    }
+
+    function renderChart() {
+      const rows = filteredHours();
+      const index = app.processIndex;
+      const values = rows.map((row) => row[index + 1] === null || row[index + 1] === "" ? null : Number(row[index + 1]));
+      const numeric = values.filter((value) => Number.isFinite(value));
+      const grid = document.getElementById("chartGrid");
+      const labels = document.getElementById("chartLabels");
+      const points = document.getElementById("chartPoints");
+      grid.replaceChildren();
+      labels.replaceChildren();
+      points.replaceChildren();
+      document.getElementById("chartLine").setAttribute("d", "");
+      document.getElementById("chartArea").setAttribute("d", "");
+
+      if (numeric.length === 0) {
+        labels.append(makeSvgElement("text", { x: 350, y: 105, "text-anchor": "middle", class: "chart-label" }));
+        labels.firstChild.textContent = "Không có số liệu cho công đoạn / khung giờ đã chọn.";
+        return;
+      }
+
+      const max = Math.max(1, ...numeric);
+      const left = 42, right = 686, top = 15, bottom = 157;
+      for (let line = 0; line <= 3; line += 1) {
+        const y = top + (bottom - top) * line / 3;
+        grid.append(makeSvgElement("line", { x1: left, y1: y, x2: right, y2: y, class: "chart-grid" }));
+        const label = makeSvgElement("text", { x: 3, y: y + 3, class: "chart-label" });
+        label.textContent = formatNumber(Math.round(max * (3 - line) / 3));
+        labels.append(label);
+      }
+
+      const step = rows.length > 1 ? (right - left) / (rows.length - 1) : 0;
+      let segment = [];
+      const segments = [];
+      values.forEach((value, pointIndex) => {
+        if (Number.isFinite(value)) {
+          const point = { x: left + step * pointIndex, y: bottom - (value / max) * (bottom - top), value, row: rows[pointIndex] };
+          segment.push(point);
+        } else if (segment.length) {
+          segments.push(segment);
+          segment = [];
+        }
+      });
+      if (segment.length) segments.push(segment);
+
+      const paths = segments.map((part) => part.map((point, partIndex) => `${partIndex ? "L" : "M"}${point.x} ${point.y}`).join(" "));
+      document.getElementById("chartLine").setAttribute("d", paths.join(" "));
+      const areaPaths = segments.filter((part) => part.length > 1).map((part) =>
+        `${part.map((point, partIndex) => `${partIndex ? "L" : "M"}${point.x} ${point.y}`).join(" ")} L${part[part.length - 1].x} ${bottom} L${part[0].x} ${bottom} Z`
+      );
+      document.getElementById("chartArea").setAttribute("d", areaPaths.join(" "));
+      segments.flat().forEach((point) => {
+        const dot = makeSvgElement("circle", { cx: point.x, cy: point.y, r: 3, class: "chart-dot" });
+        const title = makeSvgElement("title", {});
+        title.textContent = `${point.row[0]} · ${formatNumber(point.value)} pcs`;
+        dot.append(title);
+        points.append(dot);
+      });
+
+      const labelIndexes = rows.length <= 8 ? rows.map((_, i) => i) : [0, Math.floor((rows.length - 1) / 3), Math.floor(2 * (rows.length - 1) / 3), rows.length - 1];
+      [...new Set(labelIndexes)].forEach((pointIndex) => {
+        const x = left + step * pointIndex;
+        const label = makeSvgElement("text", { x, y: 180, "text-anchor": pointIndex === 0 ? "start" : pointIndex === rows.length - 1 ? "end" : "middle", class: "chart-label" });
+        label.textContent = rows[pointIndex][0];
+        labels.append(label);
+      });
+      setText("chartLegend", `${app.data.processes[index]} · pcs`);
+    }
+
+    function renderProcessList(totals) {
+      const container = document.getElementById("processList");
+      container.replaceChildren();
+      const sorted = app.data.processes.map((name, index) => ({ name, index, total: totals[index] }))
+        .filter((item) => item.total > 0)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 7);
+      const max = Math.max(1, ...sorted.map((item) => item.total));
+      sorted.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "process-row";
+        const mark = document.createElement("div");
+        mark.className = "process-mark";
+        mark.textContent = columnLetter(item.index);
+        const info = document.createElement("div");
+        info.className = "process-info";
+        const name = document.createElement("strong");
+        name.textContent = item.name;
+        const track = document.createElement("div");
+        track.className = "progress";
+        const fill = document.createElement("span");
+        fill.style.width = `${Math.max(3, item.total / max * 100)}%`;
+        track.append(fill);
+        info.append(name, track);
+        const value = document.createElement("span");
+        value.className = "process-value";
+        value.textContent = formatNumber(item.total);
+        row.append(mark, info, value);
+        container.append(row);
+      });
+      if (!sorted.length) {
+        const empty = document.createElement("p");
+        empty.className = "panel-subtitle";
+        empty.textContent = "Chưa có số liệu tổng hợp.";
+        container.append(empty);
+      }
+    }
+
+    function renderTable(totals) {
+      const body = document.getElementById("processRows");
+      body.replaceChildren();
+      app.data.processes.forEach((process, index) => {
+        const latest = latestFor(index);
+        const row = document.createElement("tr");
+        const nameCell = document.createElement("td");
+        const name = document.createElement("span");
+        name.className = "stage-name";
+        const mark = document.createElement("span");
+        mark.className = "stage-index";
+        mark.textContent = columnLetter(index);
+        name.append(mark, document.createTextNode(process));
+        nameCell.append(name);
+        row.append(nameCell);
+        const total = document.createElement("td");
+        total.textContent = formatNumber(totals[index]);
+        row.append(total);
+        const hour = document.createElement("td");
+        hour.textContent = latest ? latest.hour : "—";
+        row.append(hour);
+        const value = document.createElement("td");
+        value.textContent = latest ? formatNumber(latest.value) : "—";
+        row.append(value);
+        const status = document.createElement("td");
+        const pill = document.createElement("span");
+        pill.className = `pill${totals[index] > 0 ? "" : " pill-empty"}`;
+        pill.textContent = totals[index] > 0 ? "Có số liệu" : "Trống";
+        status.append(pill);
+        row.append(status);
+        body.append(row);
+      });
+      setText("dataFooter", `Hiển thị ${app.data.processes.length} công đoạn · phạm vi dữ liệu từ cột S đến AN.`);
+    }
+
+    function render() {
+      const totals = getTotals();
+      renderMetrics(totals);
+      renderChart();
+      renderProcessList(totals);
+      renderTable(totals);
+      renderIpqcIssues();
+    }
+
+    function parseExcelHtml(text, fileName) {
+      const documentHtml = new DOMParser().parseFromString(text, "text/html");
+      const table = documentHtml.querySelector("table");
+      if (!table) throw new Error("Không tìm thấy bảng trong file. File .xls cần được xuất dưới dạng HTML.");
+      const tableRows = Array.from(table.querySelectorAll("tr"), (row) =>
+        Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent.trim())
+      );
+      const headerIndex = tableRows.findIndex((row) => row.length >= 40 && row[0].toLocaleUpperCase() === "HOUR");
+      if (headerIndex < 0) {
+        throw new Error("Không tìm thấy hàng tiêu đề HOUR hoặc file không có đủ dữ liệu đến cột AN. Hãy chọn đúng file xuất từ bảng sản xuất.");
+      }
+      const headers = tableRows[headerIndex];
+      const width = headers.length;
+      const hours = [];
+      const totals = new Array(22).fill(null);
+      let totalFound = false;
+      for (const row of tableRows.slice(headerIndex + 1)) {
+        if (row.length < 40) continue;
+        const record = row.slice(0, width);
+        const hour = record[0].trim();
+        if (!hour) continue;
+        if (hour.toLocaleLowerCase() === "total") {
+          totals.splice(0, 22, ...record.slice(18, 40).map(parseNumber));
+          totalFound = true;
+          continue;
+        }
+        hours.push([hour, ...record.slice(18, 40).map(parseNumber)]);
+      }
+      if (hours.length === 0) throw new Error("Không tìm thấy dòng dữ liệu giờ nào trong file.");
+      if (!totalFound) {
+        for (let index = 0; index < 22; index += 1) {
+          const values = hours.map((row) => row[index + 1]).filter(Number.isFinite);
+          totals[index] = values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+        }
+      }
+      return validateData({ source: fileName, processes: headers.slice(18, 40), hours, totals });
+    }
+
+    function parseNumber(value) {
+      if (value === null || value === undefined || value.trim() === "") return null;
+      const number = Number(value.replace(/,/g, ""));
+      return Number.isFinite(number) ? number : null;
+    }
+
+    async function importFile(file) {
+      if (!file) return;
+      const text = await file.text();
+      const imported = parseExcelHtml(text, file.name);
+      app.data = imported;
+      app.hour = "all";
+      app.processIndex = Math.max(0, imported.processes.indexOf("ELECTRICAL_TEST"));
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(imported));
+      } catch (error) {
+        console.error("Không lưu được dữ liệu Excel vào bộ nhớ trình duyệt.", error);
+        showToast("Đã nạp file, nhưng trình duyệt không cho phép lưu để dùng lại lần sau.");
+      }
+      renderSelects();
+      render();
+      setText("syncStatus", "Đã đồng bộ file Excel");
+      showToast(`Đã đồng bộ ${imported.hours.length} khung giờ từ ${file.name}.`);
+    }
+
+    document.getElementById("syncButton").addEventListener("click", () => document.getElementById("fileInput").click());
+    document.getElementById("importButton").addEventListener("click", () => document.getElementById("fileInput").click());
+    document.getElementById("fileInput").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      try {
+        await importFile(file);
+      } catch (error) {
+        console.error("Không thể đọc file Excel.", error);
+        const message = error instanceof Error ? error.message : "Không thể đọc file Excel.";
+        setText("syncStatus", "Lỗi đồng bộ");
+        showToast(message);
+      } finally {
+        event.target.value = "";
+      }
+    });
+    document.getElementById("processSelect").addEventListener("change", (event) => {
+      app.processIndex = Number(event.target.value);
+      render();
+    });
+    document.getElementById("hourFilter").addEventListener("change", (event) => {
+      app.hour = event.target.value;
+      render();
+    });
+    document.getElementById("openIpqcForm").addEventListener("click", () => {
+      const form = document.getElementById("ipqcForm");
+      form.hidden = false;
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      document.getElementById("ipqcDetectedAt").value = now.toISOString().slice(0, 16);
+      document.getElementById("ipqcIssueTitle").focus();
+    });
+    document.getElementById("cancelIpqcForm").addEventListener("click", () => {
+      const form = document.getElementById("ipqcForm");
+      form.reset();
+      form.hidden = true;
+    });
+    document.getElementById("ipqcForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+      const title = String(formData.get("title") || "").trim();
+      const detectedAt = String(formData.get("detectedAt") || "");
+      if (!title || !detectedAt) {
+        showToast("Vui lòng nhập nội dung lỗi và thời gian phát hiện.");
+        return;
+      }
+      const issue = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        title,
+        process: String(formData.get("process") || ""),
+        detectedAt,
+        improvement: String(formData.get("improvement") || "").trim(),
+        confirmed: false
+      };
+      if (!saveIpqcIssues([issue, ...ipqcIssues])) return;
+      form.reset();
+      form.hidden = true;
+      showToast("Đã lưu ghi nhận lỗi IPQC.");
+    });
+    document.getElementById("ipqcList").addEventListener("change", (event) => {
+      const target = event.target;
+      if (target.matches(".ipqc-confirm")) {
+        const updated = ipqcIssues.map((issue) => issue.id === target.dataset.issueId
+          ? { ...issue, confirmed: target.checked }
+          : issue);
+        if (saveIpqcIssues(updated)) {
+          const issue = ipqcIssues.find((item) => item.id === target.dataset.issueId);
+          showToast(issue && issue.confirmed ? "Đã xác nhận lỗi IPQC." : "Đã bỏ xác nhận lỗi IPQC.");
+        }
+        return;
+      }
+      if (target.matches(".ipqc-note")) {
+        const updated = ipqcIssues.map((issue) => issue.id === target.dataset.issueId
+          ? { ...issue, improvement: target.value.trim() }
+          : issue);
+        if (saveIpqcIssues(updated)) showToast("Đã lưu phương án cải thiện.");
+      }
+    });
+    document.getElementById("ipqcList").addEventListener("click", (event) => {
+      const button = event.target.closest(".ipqc-item-remove");
+      if (!button) return;
+      const issue = ipqcIssues.find((item) => item.id === button.dataset.issueId);
+      if (!issue || !window.confirm(`Xóa ghi nhận lỗi “${issue.title}” và phương án cải thiện?`)) return;
+      const updated = ipqcIssues.filter((item) => item.id !== issue.id);
+      if (saveIpqcIssues(updated)) showToast("Đã xóa ghi nhận lỗi IPQC.");
+    });
+    document.querySelectorAll(".nav button[data-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".nav button").forEach((item) => item.classList.toggle("active", item === button));
+        document.getElementById(button.dataset.action === "chart" ? "productionChart" : button.dataset.action === "processes" ? "processTable" : "dataSource")
+          .scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+    renderSelects();
+    render();
+  </script>
+</body>
+</html>
